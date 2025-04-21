@@ -1,38 +1,42 @@
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from typing import Optional
 from langchain_community.vectorstores import FAISS
-import streamlit as st
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import os
 
 class VectorStore:
-    def __init__(self, path: str):
-        self.path = path
-        self.api_key = os.getenv("GOOGLE_API_KEY")
-        self.embedding_model = None
-        self.db = None
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.embeddings = None
+        self.vectorstore = None
 
-    @staticmethod
-    @st.cache_resource
-    def _load_vectorstore(path: str, api_key: str):
-        """Static method to load the vector store with caching."""
+    def initialize_embeddings(self) -> None:
+        """Initialize the embeddings model."""
+        self.embeddings = GoogleGenerativeAIEmbeddings(
+            google_api_key=self.api_key,
+            model="models/embedding-001",
+            api_version="v1beta"
+        )
+
+    def load_vectorstore(self, path: str = "vectorstore/db_faiss") -> Optional[FAISS]:
+        """Load the vector store from disk."""
         try:
-            embedding_model = GoogleGenerativeAIEmbeddings(
-                google_api_key=api_key,
-                model="models/embedding-001",
-                api_version="v1beta"
-            )
-            db = FAISS.load_local(path, embedding_model, allow_dangerous_deserialization=True)
-            return db
+            if not self.embeddings:
+                self.initialize_embeddings()
+            
+            if os.path.exists(path):
+                self.vectorstore = FAISS.load_local(
+                    path, 
+                    self.embeddings,
+                    allow_dangerous_deserialization=True
+                )
+                return self.vectorstore
+            return None
         except Exception as e:
-            st.error(f"Failed to load vector store: {str(e)}")
+            print(f"Error loading vector store: {str(e)}")
             return None
 
-    def load(self):
-        """Load the vector store."""
-        self.db = self._load_vectorstore(self.path, self.api_key)
-        return self.db
-
-    def get_retriever(self, k: int = 2):
-        """Get a retriever from the vector store."""
-        if self.db is None:
-            self.load()
-        return self.db.as_retriever(search_kwargs={'k': k}) if self.db else None 
+    def similarity_search(self, query: str, k: int = 3):
+        """Perform similarity search on the vector store."""
+        if self.vectorstore:
+            return self.vectorstore.similarity_search(query, k=k)
+        return None 
