@@ -6,6 +6,8 @@ from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import os
 from .prompts import MEDICAL_QA_TEMPLATE
+from pathlib import Path
+import shutil
 
 @dataclass
 class ChatMessage:
@@ -28,27 +30,41 @@ class ChatBot:
             )
             vectorstore_path = "vectorstore/db_faiss"
             
-            # Try to load existing vectorstore
-            if os.path.exists(vectorstore_path):
+            # Check for vector store lock file
+            lock_file = "vectorstore/creation_lock"
+            
+            # If vector store exists and no lock file, try to load it
+            if os.path.exists(vectorstore_path) and not os.path.exists(lock_file):
                 try:
-                    # Try loading with version compatibility
                     return FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
                 except Exception as e:
-                    st.warning(f"Recreating vector store due to: {str(e)}")
-                    # Delete the incompatible vector store
-                    import shutil
-                    shutil.rmtree(vectorstore_path, ignore_errors=True)
+                    st.error(f"Error loading vector store: {str(e)}")
+                    st.info("Using backup vector store...")
+                    # Try to load from backup if exists
+                    backup_path = "vectorstore/db_faiss_backup"
+                    if os.path.exists(backup_path):
+                        try:
+                            return FAISS.load_local(backup_path, embeddings, allow_dangerous_deserialization=True)
+                        except:
+                            st.error("Backup vector store also failed to load.")
+                    
+                    # If we get here, both main and backup failed
+                    st.warning("Creating new vector store. This may take a few minutes...")
             
-            # Create new vectorstore
-            st.info("Creating new vector store...")
-            pdf_path = os.path.join("Data", "GALE_ENCYCLOPEDIA.pdf")
-            if not os.path.exists(pdf_path):
-                pdf_path = os.path.join("data", "GALE_ENCYCLOPEDIA.pdf")
-                if not os.path.exists(pdf_path):
-                    st.error("Medical knowledge base PDF not found. Please ensure GALE_ENCYCLOPEDIA.pdf is in the Data/ directory.")
-                    return None
+            # Create lock file to prevent multiple processes from creating vector store simultaneously
+            Path(lock_file).touch()
             
             try:
+                # Create new vectorstore
+                pdf_path = os.path.join("Data", "GALE_ENCYCLOPEDIA.pdf")
+                if not os.path.exists(pdf_path):
+                    pdf_path = os.path.join("data", "GALE_ENCYCLOPEDIA.pdf")
+                    if not os.path.exists(pdf_path):
+                        st.error("Medical knowledge base PDF not found.")
+                        if os.path.exists(lock_file):
+                            os.remove(lock_file)
+                        return None
+                
                 from langchain_community.document_loaders import PyPDFLoader
                 from langchain.text_splitter import RecursiveCharacterTextSplitter
                 
@@ -58,34 +74,50 @@ class ChatBot:
                 
                 # Split documents with smaller chunks for better handling
                 text_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=500,  # Reduced chunk size
-                    chunk_overlap=50  # Reduced overlap
+                    chunk_size=500,
+                    chunk_overlap=50
                 )
                 chunks = text_splitter.split_documents(documents)
                 
                 if not chunks:
                     st.error("No content extracted from PDF.")
+                    if os.path.exists(lock_file):
+                        os.remove(lock_file)
                     return None
                 
                 # Create new vectorstore
                 vectorstore = FAISS.from_documents(chunks, embeddings)
                 
-                # Ensure directory exists and is empty
+                # Backup existing vector store if it exists
                 if os.path.exists(vectorstore_path):
-                    shutil.rmtree(vectorstore_path)
-                os.makedirs(vectorstore_path, exist_ok=True)
+                    backup_path = "vectorstore/db_faiss_backup"
+                    if os.path.exists(backup_path):
+                        shutil.rmtree(backup_path)
+                    shutil.copytree(vectorstore_path, backup_path)
                 
-                # Save vectorstore
+                # Save new vector store
+                os.makedirs(vectorstore_path, exist_ok=True)
                 vectorstore.save_local(vectorstore_path)
                 st.success("Vector store created successfully!")
+                
+                # Remove lock file after successful creation
+                if os.path.exists(lock_file):
+                    os.remove(lock_file)
+                
                 return vectorstore
                 
             except Exception as create_error:
                 st.error(f"Failed to create vector store: {str(create_error)}")
+                # Remove lock file if creation fails
+                if os.path.exists(lock_file):
+                    os.remove(lock_file)
                 return None
                 
         except Exception as e:
             st.error(f"Failed to initialize vector store: {str(e)}")
+            # Remove lock file if initialization fails
+            if os.path.exists("vectorstore/creation_lock"):
+                os.remove("vectorstore/creation_lock")
             return None
 
     def _detect_detail_level(self, query: str) -> str:
