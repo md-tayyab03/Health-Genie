@@ -30,94 +30,49 @@ class ChatBot:
             )
             vectorstore_path = "vectorstore/db_faiss"
             
-            # Check for vector store lock file
-            lock_file = "vectorstore/creation_lock"
-            
-            # If vector store exists and no lock file, try to load it
-            if os.path.exists(vectorstore_path) and not os.path.exists(lock_file):
+            # If vector store exists, try to load it silently
+            if os.path.exists(vectorstore_path):
                 try:
-                    return FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
-                except Exception as e:
-                    st.error(f"Error loading vector store: {str(e)}")
-                    st.info("Using backup vector store...")
-                    # Try to load from backup if exists
-                    backup_path = "vectorstore/db_faiss_backup"
-                    if os.path.exists(backup_path):
-                        try:
-                            return FAISS.load_local(backup_path, embeddings, allow_dangerous_deserialization=True)
-                        except:
-                            st.error("Backup vector store also failed to load.")
-                    
-                    # If we get here, both main and backup failed
-                    st.warning("Creating new vector store. This may take a few minutes...")
+                    # Try loading without the allow_dangerous_deserialization parameter
+                    return FAISS.load_local(vectorstore_path, embeddings)
+                except:
+                    # If loading fails, recreate silently
+                    pass
             
-            # Create lock file to prevent multiple processes from creating vector store simultaneously
-            Path(lock_file).touch()
-            
-            try:
-                # Create new vectorstore
-                pdf_path = os.path.join("Data", "GALE_ENCYCLOPEDIA.pdf")
+            # Create new vectorstore silently
+            pdf_path = os.path.join("Data", "GALE_ENCYCLOPEDIA.pdf")
+            if not os.path.exists(pdf_path):
+                pdf_path = os.path.join("data", "GALE_ENCYCLOPEDIA.pdf")
                 if not os.path.exists(pdf_path):
-                    pdf_path = os.path.join("data", "GALE_ENCYCLOPEDIA.pdf")
-                    if not os.path.exists(pdf_path):
-                        st.error("Medical knowledge base PDF not found.")
-                        if os.path.exists(lock_file):
-                            os.remove(lock_file)
-                        return None
-                
-                from langchain_community.document_loaders import PyPDFLoader
-                from langchain.text_splitter import RecursiveCharacterTextSplitter
-                
-                # Load PDF
-                loader = PyPDFLoader(pdf_path)
-                documents = loader.load()
-                
-                # Split documents with smaller chunks for better handling
-                text_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=500,
-                    chunk_overlap=50
-                )
-                chunks = text_splitter.split_documents(documents)
-                
-                if not chunks:
-                    st.error("No content extracted from PDF.")
-                    if os.path.exists(lock_file):
-                        os.remove(lock_file)
                     return None
-                
-                # Create new vectorstore
-                vectorstore = FAISS.from_documents(chunks, embeddings)
-                
-                # Backup existing vector store if it exists
-                if os.path.exists(vectorstore_path):
-                    backup_path = "vectorstore/db_faiss_backup"
-                    if os.path.exists(backup_path):
-                        shutil.rmtree(backup_path)
-                    shutil.copytree(vectorstore_path, backup_path)
-                
-                # Save new vector store
-                os.makedirs(vectorstore_path, exist_ok=True)
-                vectorstore.save_local(vectorstore_path)
-                st.success("Vector store created successfully!")
-                
-                # Remove lock file after successful creation
-                if os.path.exists(lock_file):
-                    os.remove(lock_file)
-                
-                return vectorstore
-                
-            except Exception as create_error:
-                st.error(f"Failed to create vector store: {str(create_error)}")
-                # Remove lock file if creation fails
-                if os.path.exists(lock_file):
-                    os.remove(lock_file)
+            
+            from langchain_community.document_loaders import PyPDFLoader
+            from langchain.text_splitter import RecursiveCharacterTextSplitter
+            
+            # Load PDF silently
+            loader = PyPDFLoader(pdf_path)
+            documents = loader.load()
+            
+            # Split documents
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=500,
+                chunk_overlap=50
+            )
+            chunks = text_splitter.split_documents(documents)
+            
+            if not chunks:
                 return None
+            
+            # Create new vectorstore
+            vectorstore = FAISS.from_documents(chunks, embeddings)
+            
+            # Save silently
+            os.makedirs(vectorstore_path, exist_ok=True)
+            vectorstore.save_local(vectorstore_path)
+            
+            return vectorstore
                 
         except Exception as e:
-            st.error(f"Failed to initialize vector store: {str(e)}")
-            # Remove lock file if initialization fails
-            if os.path.exists("vectorstore/creation_lock"):
-                os.remove("vectorstore/creation_lock")
             return None
 
     def _detect_detail_level(self, query: str) -> str:
@@ -130,12 +85,14 @@ class ChatBot:
         """Get response from RAG system with optional sources."""
         try:
             if not self.vectorstore:
-                return "No medical documents available for reference."
+                self.vectorstore = self._load_vectorstore()
+                if not self.vectorstore:
+                    return "I apologize, but I'm having trouble accessing my medical knowledge base. Please try again in a few moments."
 
             # Get relevant documents
             docs = self.vectorstore.similarity_search(query, k=3)
             if not docs:
-                return "No relevant information found in medical documents."
+                return "I apologize, but I couldn't find relevant information for your query. Could you please rephrase your question?"
 
             # Format documents for context
             context = "\n\n".join([doc.page_content for doc in docs])
@@ -144,7 +101,6 @@ class ChatBot:
             response_parts = []
             
             # Add main content
-            response_parts.append("Based on medical literature:")
             response_parts.append(context)
             
             # Add sources if requested
@@ -158,7 +114,14 @@ class ChatBot:
             return "\n".join(response_parts)
 
         except Exception as e:
-            return f"Error in RAG response: {str(e)}"
+            # If vector store fails during query, try to reload once
+            try:
+                self.vectorstore = self._load_vectorstore()
+                if self.vectorstore:
+                    return self.get_rag_response(query, include_sources)
+            except:
+                pass
+            return "I apologize, but I'm having trouble processing your request. Please try again."
 
     def _get_gemini_response(self, prompt: str) -> str:
         """Get response from Gemini API."""
