@@ -1,9 +1,8 @@
-# HealthGenie 🏥
-## AI-Powered Medical Assistant Chatbot
+# HealthGenie - AI Powered Medical Assistant Chatbot
 
 HealthGenie is a Streamlit-based chatbot that provides evidence-based medical information using Google's Gemini AI. It supports a dual-mode chat system for general and document-enhanced responses via RAG (Retrieval Augmented Generation).
 
-## 🚀 Features
+## Features
 
 ### Dual Chat Modes
 - 🔹 **Normal Mode**: Direct AI responses (Gemini)
@@ -12,12 +11,12 @@ HealthGenie is a Streamlit-based chatbot that provides evidence-based medical in
 - Intuitive, clean UI with sidebar mode toggle
 - Source citations when RAG mode is active
 
-### 🧠 Medical Knowledge Base
+### Medical Knowledge Base
 - Integrates vector embeddings from medical PDFs
 - Supports multiple documents and custom chunking
 - Based on LangChain + FAISS + Sentence-Transformers
 
-## ⚙️ Setup
+## Setup
 
 ### 1. Prerequisites
 - Python 3.11+
@@ -48,12 +47,14 @@ python create_vectorstore.py --pdf_path "Data/*.pdf"
 streamlit run medibot.py
 ```
 
-## 💡 Chat Mode Toggle
+## Chat Mode Toggle
+
 - Switch between Normal and RAG mode via sidebar
 - RAG uses your medical documents for deeper insights
 - View source documents for enhanced responses
 
-## 🧰 Tech Stack
+## Tech Stack
+
 - Python
 - Streamlit
 - Gemini AI
@@ -62,10 +63,12 @@ streamlit run medibot.py
 - PyPDF2
 - Streamlit-Authenticator
 
-## 📬 Contact
-For feedback or questions: amin@gmail.com
+## Contact
 
-## 📄 License
+Feel free to Contribute🌟 For feedback or questions: mohammedtayyab242@gmail.com
+
+## License
+
 MIT License – see LICENSE
 
 
