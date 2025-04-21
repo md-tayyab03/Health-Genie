@@ -35,12 +35,20 @@ class ChatBot:
                 except Exception as e:
                     st.warning("Existing vector store is incompatible. Creating new one...")
                     # If loading fails, we'll recreate it
-                    if os.path.exists("Data/GALE_ENCYCLOPEDIA.pdf"):
+                    pdf_path = "Data/GALE_ENCYCLOPEDIA.pdf"
+                    if not os.path.exists(pdf_path):
+                        # Try alternate case
+                        pdf_path = "data/GALE_ENCYCLOPEDIA.pdf"
+                        if not os.path.exists(pdf_path):
+                            st.error("Medical knowledge base PDF not found in Data/ or data/ directory.")
+                            return None
+                    
+                    try:
                         from langchain_community.document_loaders import PyPDFLoader
                         from langchain.text_splitter import RecursiveCharacterTextSplitter
                         
                         # Load PDF
-                        loader = PyPDFLoader("Data/GALE_ENCYCLOPEDIA.pdf")
+                        loader = PyPDFLoader(pdf_path)
                         documents = loader.load()
                         
                         # Split documents
@@ -56,11 +64,51 @@ class ChatBot:
                         # Save it
                         os.makedirs(os.path.dirname(vectorstore_path), exist_ok=True)
                         vectorstore.save_local(vectorstore_path)
+                        
+                        st.success("Vector store created successfully!")
                         return vectorstore
-                    else:
-                        st.error("Medical knowledge base PDF not found.")
+                    except Exception as create_error:
+                        st.error(f"Failed to create vector store: {str(create_error)}")
                         return None
-            return None
+            
+            st.info("No vector store found. Creating new one...")
+            # Create new vectorstore if it doesn't exist
+            pdf_path = "Data/GALE_ENCYCLOPEDIA.pdf"
+            if not os.path.exists(pdf_path):
+                # Try alternate case
+                pdf_path = "data/GALE_ENCYCLOPEDIA.pdf"
+                if not os.path.exists(pdf_path):
+                    st.error("Medical knowledge base PDF not found in Data/ or data/ directory.")
+                    return None
+            
+            try:
+                from langchain_community.document_loaders import PyPDFLoader
+                from langchain.text_splitter import RecursiveCharacterTextSplitter
+                
+                # Load PDF
+                loader = PyPDFLoader(pdf_path)
+                documents = loader.load()
+                
+                # Split documents
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000,
+                    chunk_overlap=200
+                )
+                chunks = text_splitter.split_documents(documents)
+                
+                # Create new vectorstore
+                vectorstore = FAISS.from_documents(chunks, embeddings)
+                
+                # Save it
+                os.makedirs(os.path.dirname(vectorstore_path), exist_ok=True)
+                vectorstore.save_local(vectorstore_path)
+                
+                st.success("Vector store created successfully!")
+                return vectorstore
+            except Exception as create_error:
+                st.error(f"Failed to create vector store: {str(create_error)}")
+                return None
+                
         except Exception as e:
             st.error(f"Failed to load vector store: {str(e)}")
             return None
