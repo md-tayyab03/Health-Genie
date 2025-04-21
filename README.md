@@ -18,32 +18,66 @@ HealthGenie is an AI-powered medical assistant chatbot built with Streamlit that
   - Evidence-based responses
   - Medical encyclopedia integration
 
-## Setup
+## Prerequisites
 
-1. Clone the repository
-2. Install dependencies:
+Before you begin, ensure you have:
+- Python 3.11.6 or higher
+- A Google API key for Gemini AI
+
+## Setup Instructions
+
+You can choose either method for setting up the project:
+
+### Method 1: Using requirements.txt (Recommended for Deployment)
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/yourusername/Health-Genie.git
+   cd Health-Genie
+   ```
+
+2. **Create and Activate Virtual Environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install Dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Set up environment variables:
-   Create a `.env` file with:
-   ```
-   GOOGLE_API_KEY=your_google_api_key_here
-   ```
-
-4. Initialize the configuration:
-   Create a `config.yaml` file with initial admin credentials.
-
-5. Set up Vector Database (for RAG mode):
+### Method 2: Using Pipenv (Alternative for Local Development)
+1. **Install Pipenv** (if not already installed)
    ```bash
-   # Create vector embeddings from your PDF documents
-   python create_vectorstore.py --pdf_path "Data/your_medical_docs.pdf"
+   pip install pipenv
    ```
 
-6. Run the application:
+2. **Install Dependencies**
+   ```bash
+   pipenv install
+   pipenv shell
+   ```
+
+### Common Setup Steps (After choosing either method)
+
+1. **Environment Configuration**
+   - Create a `.env` file in the project root:
+     ```
+     GOOGLE_API_KEY=your_google_api_key_here
+     ```
+
+2. **Initialize Vector Store**
+   ```bash
+   python create_vectorstore.py
+   # Or with Pipenv:
+   # pipenv run python create_vectorstore.py
+   ```
+
+3. **Run the Application**
    ```bash
    streamlit run medibot.py
+   # Or with Pipenv:
+   # pipenv run streamlit run medibot.py
    ```
 
 ## Tech Stack
@@ -97,4 +131,68 @@ Email: **mohammedtayyab242@gmail.com**
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Medical knowledge base from GALE Encyclopedia
+- Powered by Google's Gemini AI
+- Built with Streamlit and LangChain
+
+## Development with Pipenv
+
+- **Adding New Dependencies**
+  ```bash
+  pipenv install package_name
+  ```
+
+- **Adding Development Dependencies**
+  ```bash
+  pipenv install package_name --dev
+  ```
+
+- **Updating Dependencies**
+  ```bash
+  pipenv update
+  ```
+
+- **Generating requirements.txt** (for deployment)
+  ```bash
+  pipenv requirements > requirements.txt
+  ```
+
+## Deployment
+
+1. **Prepare for Deployment**
+   ```bash
+   # Generate requirements.txt for deployment platforms
+   pipenv requirements > requirements.txt
+   ```
+
+2. **Deploy to Streamlit Cloud**
+   - Connect your GitHub repository
+   - Set environment variables:
+     - `GOOGLE_API_KEY`: Your Google API key
+
+## Troubleshooting
+
+- **Vector Store Issues**
+  - If you encounter vector store loading issues:
+    ```bash
+    pipenv run python create_vectorstore.py
+    ```
+
+- **Dependency Issues**
+  - Try cleaning and reinstalling:
+    ```bash
+    pipenv clean
+    pipenv install
+    ```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
