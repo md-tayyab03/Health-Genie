@@ -1,198 +1,71 @@
-# HealthGenie - Medical Assistant Chatbot 🏥
+# HealthGenie 🏥
+## AI-Powered Medical Assistant Chatbot
 
-HealthGenie is an AI-powered medical assistant chatbot built with Streamlit that provides evidence-based medical information and answers health-related questions. It features dual-mode operation: direct AI chat using Gemini and RAG-based (Retrieval Augmented Generation) chat using vector embeddings for enhanced domain-specific knowledge.
+HealthGenie is a Streamlit-based chatbot that provides evidence-based medical information using Google's Gemini AI. It supports a dual-mode chat system for general and document-enhanced responses via RAG (Retrieval Augmented Generation).
 
-## Features
+## 🚀 Features
 
-- *Dual-Mode Chat Interface*
-  - Normal Mode: Direct AI chat using Google's Gemini
-  - RAG Mode: Enhanced responses using vector embeddings from medical documents
-  - Real-time chat with AI
-  - Chat history preservation
-  - Multiple chat sessions support
-  - Clean and intuitive UI
+### Dual Chat Modes
+- 🔹 **Normal Mode**: Direct AI responses (Gemini)
+- 🔹 **RAG Mode**: Enhanced answers using your medical documents
+- Real-time AI chat with history + multi-session support
+- Intuitive, clean UI with sidebar mode toggle
+- Source citations when RAG mode is active
 
-- *Medical Knowledge Base*
-  - Flexible knowledge source integration
-  - Vector embedding-based document retrieval
-  - Evidence-based responses
-  - Medical encyclopedia integration
+### 🧠 Medical Knowledge Base
+- Integrates vector embeddings from medical PDFs
+- Supports multiple documents and custom chunking
+- Based on LangChain + FAISS + Sentence-Transformers
 
-## Prerequisites
+## ⚙️ Setup
 
-Before you begin, ensure you have:
-- Python 3.11.6 or higher
-- A Google API key for Gemini AI
+### 1. Prerequisites
+- Python 3.11+
+- Google API Key (for Gemini)
 
-## Setup Instructions
-
-You can choose either method for setting up the project:
-
-### Method 1: Using requirements.txt (Recommended for Deployment)
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/yourusername/Health-Genie.git
-   cd Health-Genie
-   ```
-
-2. **Create and Activate Virtual Environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### Method 2: Using Pipenv (Alternative for Local Development)
-1. **Install Pipenv** (if not already installed)
-   ```bash
-   pip install pipenv
-   ```
-
-2. **Install Dependencies**
-   ```bash
-   pipenv install
-   pipenv shell
-   ```
-
-### Common Setup Steps (After choosing either method)
-
-1. **Environment Configuration**
-   - Create a `.env` file in the project root:
-     ```
-     GOOGLE_API_KEY=your_google_api_key_here
-     ```
-
-2. **Initialize Vector Store**
-   ```bash
-   python create_vectorstore.py
-   # Or with Pipenv:
-   # pipenv run python create_vectorstore.py
-   ```
-
-3. **Run the Application**
-   ```bash
-   streamlit run medibot.py
-   # Or with Pipenv:
-   # pipenv run streamlit run medibot.py
-   ```
-
-## Tech Stack
-
-- Python 3.9+
-- Streamlit
-- Google Gemini AI
-- LangChain
-- FAISS
-- Sentence-Transformers
-- PyPDF2
-- Streamlit-Authenticator
-- YAML
-- HTML/CSS
-
-## Vector Database Setup Commands
-
-### Creating Vector Embeddings
+### 2. Clone & Install
 ```bash
-# Basic usage
-python create_vectorstore.py --pdf_path "Data/your_medical_docs.pdf"
+git clone https://github.com/yourusername/Health-Genie.git
+cd Health-Genie
+python -m venv venv && source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-# With custom chunk size and overlap
-python create_vectorstore.py --pdf_path "Data/your_medical_docs.pdf" --chunk_size 1000 --chunk_overlap 200
+### 3. Configure Environment
+Create a `.env` file:
+```ini
+GOOGLE_API_KEY=your_google_api_key_here
+```
 
-# Process multiple PDFs
+### 4. Process Documents
+```bash
+# Create vectorstore from PDFs
 python create_vectorstore.py --pdf_path "Data/*.pdf"
 ```
 
-### Switching Between Chat Modes
+### 5. Run the App
+```bash
+streamlit run medibot.py
+```
 
-- Simple ON/OFF toggle button in the sidebar to switch RAG mode
-- When RAG is ON: Responses are enhanced with medical document knowledge
-- When RAG is OFF: Direct Gemini AI responses without document context
-- Toggle at any time during conversation to switch modes
-- Sources are displayed when RAG mode is active
+## 💡 Chat Mode Toggle
+- Switch between Normal and RAG mode via sidebar
+- RAG uses your medical documents for deeper insights
+- View source documents for enhanced responses
 
-### Using RAG Mode
+## 🧰 Tech Stack
+- Python
+- Streamlit
+- Gemini AI
+- LangChain
+- FAISS
+- PyPDF2
+- Streamlit-Authenticator
 
-1. Ensure your documents are processed (vector embeddings created)
-2. Click the "ON" button in the sidebar to activate RAG mode
-3. Your queries will now be answered using both AI and your medical documents
-4. View sources used for responses when available
-5. Switch back to normal mode anytime by clicking "OFF"
+## 📬 Contact
+For feedback or questions: amin@gmail.com
 
-*Your contributions can help make healthcare information more accessible to everyone! 🌟*
+## 📄 License
+MIT License – see LICENSE
 
-For any queries, suggestions:
-Email: **mohammedtayyab242@gmail.com**
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Medical knowledge base from GALE Encyclopedia
-- Powered by Google's Gemini AI
-- Built with Streamlit and LangChain
-
-## Development with Pipenv
-
-- **Adding New Dependencies**
-  ```bash
-  pipenv install package_name
-  ```
-
-- **Adding Development Dependencies**
-  ```bash
-  pipenv install package_name --dev
-  ```
-
-- **Updating Dependencies**
-  ```bash
-  pipenv update
-  ```
-
-- **Generating requirements.txt** (for deployment)
-  ```bash
-  pipenv requirements > requirements.txt
-  ```
-
-## Deployment
-
-1. **Prepare for Deployment**
-   ```bash
-   # Generate requirements.txt for deployment platforms
-   pipenv requirements > requirements.txt
-   ```
-
-2. **Deploy to Streamlit Cloud**
-   - Connect your GitHub repository
-   - Set environment variables:
-     - `GOOGLE_API_KEY`: Your Google API key
-
-## Troubleshooting
-
-- **Vector Store Issues**
-  - If you encounter vector store loading issues:
-    ```bash
-    pipenv run python create_vectorstore.py
-    ```
-
-- **Dependency Issues**
-  - Try cleaning and reinstalling:
-    ```bash
-    pipenv clean
-    pipenv install
-    ```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
