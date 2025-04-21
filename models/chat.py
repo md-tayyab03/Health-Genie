@@ -31,54 +31,21 @@ class ChatBot:
             # Try to load existing vectorstore
             if os.path.exists(vectorstore_path):
                 try:
+                    # Try loading with version compatibility
                     return FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
                 except Exception as e:
-                    st.warning("Existing vector store is incompatible. Creating new one...")
-                    # If loading fails, we'll recreate it
-                    pdf_path = "Data/GALE_ENCYCLOPEDIA.pdf"
-                    if not os.path.exists(pdf_path):
-                        # Try alternate case
-                        pdf_path = "data/GALE_ENCYCLOPEDIA.pdf"
-                        if not os.path.exists(pdf_path):
-                            st.error("Medical knowledge base PDF not found in Data/ or data/ directory.")
-                            return None
-                    
-                    try:
-                        from langchain_community.document_loaders import PyPDFLoader
-                        from langchain.text_splitter import RecursiveCharacterTextSplitter
-                        
-                        # Load PDF
-                        loader = PyPDFLoader(pdf_path)
-                        documents = loader.load()
-                        
-                        # Split documents
-                        text_splitter = RecursiveCharacterTextSplitter(
-                            chunk_size=1000,
-                            chunk_overlap=200
-                        )
-                        chunks = text_splitter.split_documents(documents)
-                        
-                        # Create new vectorstore
-                        vectorstore = FAISS.from_documents(chunks, embeddings)
-                        
-                        # Save it
-                        os.makedirs(os.path.dirname(vectorstore_path), exist_ok=True)
-                        vectorstore.save_local(vectorstore_path)
-                        
-                        st.success("Vector store created successfully!")
-                        return vectorstore
-                    except Exception as create_error:
-                        st.error(f"Failed to create vector store: {str(create_error)}")
-                        return None
+                    st.warning(f"Recreating vector store due to: {str(e)}")
+                    # Delete the incompatible vector store
+                    import shutil
+                    shutil.rmtree(vectorstore_path, ignore_errors=True)
             
-            st.info("No vector store found. Creating new one...")
-            # Create new vectorstore if it doesn't exist
-            pdf_path = "Data/GALE_ENCYCLOPEDIA.pdf"
+            # Create new vectorstore
+            st.info("Creating new vector store...")
+            pdf_path = os.path.join("Data", "GALE_ENCYCLOPEDIA.pdf")
             if not os.path.exists(pdf_path):
-                # Try alternate case
-                pdf_path = "data/GALE_ENCYCLOPEDIA.pdf"
+                pdf_path = os.path.join("data", "GALE_ENCYCLOPEDIA.pdf")
                 if not os.path.exists(pdf_path):
-                    st.error("Medical knowledge base PDF not found in Data/ or data/ directory.")
+                    st.error("Medical knowledge base PDF not found. Please ensure GALE_ENCYCLOPEDIA.pdf is in the Data/ directory.")
                     return None
             
             try:
@@ -89,28 +56,36 @@ class ChatBot:
                 loader = PyPDFLoader(pdf_path)
                 documents = loader.load()
                 
-                # Split documents
+                # Split documents with smaller chunks for better handling
                 text_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=1000,
-                    chunk_overlap=200
+                    chunk_size=500,  # Reduced chunk size
+                    chunk_overlap=50  # Reduced overlap
                 )
                 chunks = text_splitter.split_documents(documents)
+                
+                if not chunks:
+                    st.error("No content extracted from PDF.")
+                    return None
                 
                 # Create new vectorstore
                 vectorstore = FAISS.from_documents(chunks, embeddings)
                 
-                # Save it
-                os.makedirs(os.path.dirname(vectorstore_path), exist_ok=True)
-                vectorstore.save_local(vectorstore_path)
+                # Ensure directory exists and is empty
+                if os.path.exists(vectorstore_path):
+                    shutil.rmtree(vectorstore_path)
+                os.makedirs(vectorstore_path, exist_ok=True)
                 
+                # Save vectorstore
+                vectorstore.save_local(vectorstore_path)
                 st.success("Vector store created successfully!")
                 return vectorstore
+                
             except Exception as create_error:
                 st.error(f"Failed to create vector store: {str(create_error)}")
                 return None
                 
         except Exception as e:
-            st.error(f"Failed to load vector store: {str(e)}")
+            st.error(f"Failed to initialize vector store: {str(e)}")
             return None
 
     def _detect_detail_level(self, query: str) -> str:
