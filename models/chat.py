@@ -27,8 +27,39 @@ class ChatBot:
                 api_version="v1beta"
             )
             vectorstore_path = "vectorstore/db_faiss"
+            
+            # Try to load existing vectorstore
             if os.path.exists(vectorstore_path):
-                return FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+                try:
+                    return FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+                except Exception as e:
+                    st.warning("Existing vector store is incompatible. Creating new one...")
+                    # If loading fails, we'll recreate it
+                    if os.path.exists("Data/GALE_ENCYCLOPEDIA.pdf"):
+                        from langchain_community.document_loaders import PyPDFLoader
+                        from langchain.text_splitter import RecursiveCharacterTextSplitter
+                        
+                        # Load PDF
+                        loader = PyPDFLoader("Data/GALE_ENCYCLOPEDIA.pdf")
+                        documents = loader.load()
+                        
+                        # Split documents
+                        text_splitter = RecursiveCharacterTextSplitter(
+                            chunk_size=1000,
+                            chunk_overlap=200
+                        )
+                        chunks = text_splitter.split_documents(documents)
+                        
+                        # Create new vectorstore
+                        vectorstore = FAISS.from_documents(chunks, embeddings)
+                        
+                        # Save it
+                        os.makedirs(os.path.dirname(vectorstore_path), exist_ok=True)
+                        vectorstore.save_local(vectorstore_path)
+                        return vectorstore
+                    else:
+                        st.error("Medical knowledge base PDF not found.")
+                        return None
             return None
         except Exception as e:
             st.error(f"Failed to load vector store: {str(e)}")
