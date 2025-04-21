@@ -1,0 +1,19 @@
+credentials:
+  usernames:
+    abrar:
+      email: abrar@gmail.com
+      name: abrar
+      password: abrar
+    admin:
+      email: admin@gmail.com
+      name: Administrator
+      password: admin
+    chapri:
+      email: chapri@gmail.com
+      name: chapri
+      password: chapri
+preauthorized:
+  emails:
+  - admin@gmail.com
+  - chapri@gmail.com
+  - abrar@gmail.com
