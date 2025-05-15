@@ -18,62 +18,38 @@ class ChatBot:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-        self.vectorstore = self._load_vectorstore()
+        self.vectorstore = None  # Do not load on init
 
-    def _load_vectorstore(self) -> FAISS:
-        """Load the FAISS vector store."""
-        try:
-            embeddings = GoogleGenerativeAIEmbeddings(
-                google_api_key=self.api_key,
-                model="models/embedding-001",
-                api_version="v1beta"
-            )
-            vectorstore_path = "vectorstore/db_faiss"
-            
-            # If vector store exists, try to load it silently
-            if os.path.exists(vectorstore_path):
-                try:
-                    # Try loading without the allow_dangerous_deserialization parameter
-                    return FAISS.load_local(vectorstore_path, embeddings)
-                except:
-                    # If loading fails, recreate silently
-                    pass
-            
-            # Create new vectorstore silently
-            pdf_path = os.path.join("Data", "GALE_ENCYCLOPEDIA.pdf")
-            if not os.path.exists(pdf_path):
-                pdf_path = os.path.join("data", "GALE_ENCYCLOPEDIA.pdf")
-                if not os.path.exists(pdf_path):
-                    return None
-            
-            from langchain_community.document_loaders import PyPDFLoader
-            from langchain.text_splitter import RecursiveCharacterTextSplitter
-            
-            # Load PDF silently
-            loader = PyPDFLoader(pdf_path)
-            documents = loader.load()
-            
-            # Split documents
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=500,
-                chunk_overlap=50
-            )
-            chunks = text_splitter.split_documents(documents)
-            
-            if not chunks:
+    @staticmethod
+    @st.cache_resource(show_spinner=False)
+    def _cached_load_vectorstore(api_key):
+        from langchain_community.vectorstores import FAISS
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
+        import os
+        print("[DEBUG] Attempting to load vectorstore...")
+        embeddings = GoogleGenerativeAIEmbeddings(
+            google_api_key=api_key,
+            model="models/embedding-001",
+            api_version="v1beta"
+        )
+        vectorstore_path = "vectorstore/db_faiss"
+        if os.path.exists(vectorstore_path):
+            try:
+                vs = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+                print("[DEBUG] Vectorstore loaded successfully.")
+                return vs
+            except Exception as e:
+                print(f"[ERROR] Error loading vectorstore: {e}")
                 return None
-            
-            # Create new vectorstore
-            vectorstore = FAISS.from_documents(chunks, embeddings)
-            
-            # Save silently
-            os.makedirs(vectorstore_path, exist_ok=True)
-            vectorstore.save_local(vectorstore_path)
-            
-            return vectorstore
-                
-        except Exception as e:
-            return None
+        print(f"[WARNING] Vectorstore path not found: {vectorstore_path}")
+        return None
+
+    def ensure_vectorstore_loaded(self):
+        if self.vectorstore is None:
+            print("[DEBUG] Loading vectorstore via ensure_vectorstore_loaded...")
+            self.vectorstore = self._cached_load_vectorstore(self.api_key)
+            if self.vectorstore is None:
+                print("[ERROR] Vectorstore could not be loaded!")
 
     def _detect_detail_level(self, query: str) -> str:
         """Detect if user is asking for detailed information."""
@@ -84,39 +60,37 @@ class ChatBot:
     def get_rag_response(self, query: str, include_sources: bool = False) -> str:
         """Get response from RAG system with optional sources."""
         try:
+            self.ensure_vectorstore_loaded()
             if not self.vectorstore:
-                self.vectorstore = self._load_vectorstore()
-                if not self.vectorstore:
-                    return "I apologize, but I'm having trouble accessing my medical knowledge base. Please try again in a few moments."
+                return "I apologize, but I'm having trouble accessing my medical knowledge base. Please try again in a few moments."
 
             # Get relevant documents
             docs = self.vectorstore.similarity_search(query, k=3)
             if not docs:
                 return "I apologize, but I couldn't find relevant information for your query. Could you please rephrase your question?"
 
-            # Format documents for context
-            context = "\n\n".join([doc.page_content for doc in docs])
-            
-            # Create response with sources
-            response_parts = []
-            
-            # Add main content
-            response_parts.append(context)
-            
-            # Add sources if requested
+            # Summarize the content of the top chunks for a concise additional info section
+            summary_points = []
+            for doc in docs:
+                text = doc.page_content.strip().replace('\n', ' ')
+                # Take only the first 2-3 sentences for brevity
+                sentences = text.split('. ')
+                snippet = '. '.join(sentences[:2]) + ('.' if len(sentences) > 1 else '')
+                summary_points.append(f"- {snippet}")
+
+            # Get unique page numbers for sources
+            page_numbers = sorted({doc.metadata.get('page', 'N/A') for doc in docs})
+            page_range = f"Pages {page_numbers[0]}–{page_numbers[-1]}" if len(page_numbers) > 1 else f"Page {page_numbers[0]}"
+
+            response = "\n".join(summary_points)
             if include_sources:
-                response_parts.append("\nSources:")
-                for doc in docs:
-                    source = doc.metadata.get('source', 'Unknown')
-                    page = doc.metadata.get('page', 'Unknown')
-                    response_parts.append(f"- {source} (Page {page})")
-            
-            return "\n".join(response_parts)
+                response += f"\n\nSources: Data\\GALE_ENCYCLOPEDIA.pdf ({page_range})"
+            return response
 
         except Exception as e:
             # If vector store fails during query, try to reload once
             try:
-                self.vectorstore = self._load_vectorstore()
+                self.vectorstore = self._cached_load_vectorstore(self.api_key)
                 if self.vectorstore:
                     return self.get_rag_response(query, include_sources)
             except:

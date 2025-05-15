@@ -66,7 +66,7 @@ def initialize_bot():
     if not GOOGLE_API_KEY:
         st.error("Please set the GOOGLE_API_KEY environment variable.")
         st.stop()
-    
+    # Only initialize ChatBot (vectorstore loads lazily now)
     return ChatBot(GOOGLE_API_KEY)
 
 def create_new_chat():

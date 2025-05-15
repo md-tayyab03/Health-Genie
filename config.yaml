@@ -8,6 +8,10 @@ credentials:
       email: admin@gmail.com
       name: Administrator
       password: admin
+    book:
+      email: book@gmail.com
+      name: book self
+      password: book
     chapri:
       email: chapri@gmail.com
       name: chapri
@@ -17,3 +21,4 @@ preauthorized:
   - admin@gmail.com
   - chapri@gmail.com
   - abrar@gmail.com
+  - book@gmail.com

@@ -53,15 +53,12 @@ def create_new_vectorstore():
         documents = loader.load()
         print(f"✅ Successfully loaded {len(documents)} pages from PDF")
         
-        print("\n🔄 Splitting documents into chunks...")
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,  # Smaller chunks for better processing
-            chunk_overlap=50,  # Reduced overlap
-            length_function=len,
-            separators=["\n\n", "\n", " ", ""]  # Custom separators for better splitting
-        )
-        chunks = text_splitter.split_documents(documents)
-        print(f"✅ Created {len(chunks)} chunks")
+        print("\n🔄 Using per-page chunking for accurate page numbers...")
+        chunks = []
+        for i, doc in enumerate(documents):
+            doc.metadata['page'] = i + 1  # 1-based page numbers
+            chunks.append(doc)
+        print(f"✅ Created {len(chunks)} per-page chunks")
         
         if not chunks:
             print("❌ Error: No content extracted from PDF")
